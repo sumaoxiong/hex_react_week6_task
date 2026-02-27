@@ -5,7 +5,7 @@ import { currency } from "../../utils/filter";
 const API_BASE = import.meta.env.VITE_API_BASE;
 const API_PATH = import.meta.env.VITE_API_PATH;
 
-function Cart() {
+function Checkout() {
   const [cart, setCart] = useState([]);
   useEffect(() => {
     //取得購物車列表
@@ -138,8 +138,85 @@ function Cart() {
           </tr>
         </tfoot>
       </table>
+      {/* 結帳頁面 */}
+      <div className="my-5 row justify-content-center">
+        <form className="col-md-6">
+          <div className="mb-3">
+            <label htmlFor="email" className="form-label">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              className="form-control"
+              placeholder="請輸入 Email"
+              defaultValue="test@gamil.com"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="name" className="form-label">
+              收件人姓名
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              className="form-control"
+              placeholder="請輸入姓名"
+              defaultValue="阿蘇"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="tel" className="form-label">
+              收件人電話
+            </label>
+            <input
+              id="tel"
+              name="tel"
+              type="tel"
+              className="form-control"
+              placeholder="請輸入電話"
+              defaultValue="0912345678"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="address" className="form-label">
+              收件人地址
+            </label>
+            <input
+              id="address"
+              name="address"
+              type="text"
+              className="form-control"
+              placeholder="請輸入地址"
+              defaultValue="嘉義市東區"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="message" className="form-label">
+              留言
+            </label>
+            <textarea
+              id="message"
+              className="form-control"
+              cols="30"
+              rows="10"
+            ></textarea>
+          </div>
+          <div className="text-end">
+            <button type="submit" className="btn btn-danger">
+              送出訂單
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
 
-export default Cart;
+export default Checkout;
