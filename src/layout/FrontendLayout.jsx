@@ -30,11 +30,11 @@ function FrontendLayout() {
               登入
             </Link>
           </li>
-          <li className="nav-item">
+          {/* <li className="nav-item">
             <Link className="nav-link " to="/logintest">
-              登入(week3作業寫的)
+              後台登入(可以對產品做crud)
             </Link>
-          </li>
+          </li> */}
         </ul>
       </header>
       <main>

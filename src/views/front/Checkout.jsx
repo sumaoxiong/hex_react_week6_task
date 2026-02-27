@@ -1,13 +1,43 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { currency } from "../../utils/filter";
+import { useForm } from "react-hook-form";
+import { RotatingLines } from "react-loader-spinner";
+import * as bootstrap from "bootstrap";
+import SingleProductModal from "../../components/SingleProductModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 const API_PATH = import.meta.env.VITE_API_PATH;
 
 function Checkout() {
+  const [product, setProduct] = useState({});
+  const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
+  const [loadingCartId, serLoadingCartId] = useState(null);
+  const [loadingProductId, setLoadingProductId] = useState(null);
+  const productModalRef = useRef(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    mode: "onChange",
+  });
   useEffect(() => {
+    //取得產品列表
+    const getProducts = async () => {
+      try {
+        const response = await axios.get(
+          `${API_BASE}/api/${API_PATH}/products`
+        );
+        console.log(response.data.products);
+        setProducts(response.data.products);
+      } catch (error) {
+        console.log(error.response.data);
+      }
+    };
+    getProducts();
     //取得購物車列表
     const getCart = async () => {
       try {
@@ -19,7 +49,44 @@ function Checkout() {
       }
     };
     getCart();
+
+    //初始化
+    productModalRef.current = new bootstrap.Modal("#productModal", {
+      keyboard: false,
+    });
+
+    // Modal 關閉時移除焦點
+    document
+      .querySelector("#productModal")
+      .addEventListener("hide.bs.modal", () => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      });
   }, []); //加上`[]`的用意上讓程式只會跑一次而已
+
+  //加入購物車功能
+  const addCart = async (id, qty = 1) => {
+    serLoadingCartId(id);
+    try {
+      const data = {
+        product_id: id,
+        qty,
+      };
+      const response = await axios.post(`${API_BASE}/api/${API_PATH}/cart`, {
+        data,
+      });
+      console.log(response.data);
+
+      const response2 = await axios.get(`${API_BASE}/api/${API_PATH}/cart`);
+      console.log(response2.data.data);
+      setCart(response2.data.data);
+    } catch (error) {
+      console.log(error.response.data);
+    } finally {
+      serLoadingCartId(null);
+    }
+  };
 
   //更新商品數量
   const updateCart = async (cartId, productId, qty = 1) => {
@@ -70,8 +137,114 @@ function Checkout() {
     }
   };
 
+  //表單送出
+  const onSubmit = async (formData) => {
+    console.log(formData);
+    try {
+      //因為預設的表單格式不符合API的格式，所以需要調整
+      const data = {
+        user: formData,
+        message: formData.message,
+      };
+      const response = await axios.post(`${API_BASE}/api/${API_PATH}/order`, {
+        data,
+      });
+      console.log(response.data);
+
+      //更新小計/總計金額
+      const response2 = await axios.get(`${API_BASE}/api/${API_PATH}/cart`);
+      console.log(response2.data.data);
+      setCart(response2.data.data);
+    } catch (error) {
+      console.log(error.response.data);
+    }
+  };
+
+  //查看更多
+  const handleView = async (id) => {
+    setLoadingProductId(id);
+    try {
+      const response = await axios.get(
+        `${API_BASE}/api/${API_PATH}/product/${id}`
+      );
+      console.log(response.data.product);
+      setProduct(response.data.product);
+    } catch (error) {
+      console.log(error.response.data);
+    } finally {
+      setLoadingProductId(null);
+    }
+
+    productModalRef.current.show();
+  };
+
+  //關閉modal視窗
+  const closeModal = () => {
+    productModalRef.current.hide();
+  };
+
   return (
     <div className="container">
+      {/* 產品列表 */}
+      <table className="table align-middle">
+        <thead>
+          <tr>
+            <th>圖片</th>
+            <th>商品名稱</th>
+            <th>價格</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((product) => (
+            <tr key={product.id}>
+              <td style={{ width: "200px" }}>
+                <div
+                  style={{
+                    height: "100px",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundImage: `url(${product.imageUrl})`,
+                  }}
+                ></div>
+              </td>
+              <td>{product.title}</td>
+              <td>
+                <del className="h6">原價：{product.origin_price}</del>
+                <div className="h5">特價：{product.price}</div>
+              </td>
+              <td>
+                <div className="btn-group btn-group-sm">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => handleView(product.id)}
+                    disabled={loadingProductId === product.id}
+                  >
+                    {loadingProductId === product.id ? (
+                      <RotatingLines color="grey" width={80} height={16} />
+                    ) : (
+                      "查看更多"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger"
+                    onClick={() => addCart(product.id)}
+                    disabled={loadingCartId === product.id}
+                  >
+                    {loadingCartId === product.id ? (
+                      <RotatingLines color="grey" width={80} height={16} />
+                    ) : (
+                      "加入購物車"
+                    )}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <h2>購物車列表</h2>
       <div className="text-end mt-4">
         <button
@@ -140,7 +313,7 @@ function Checkout() {
       </table>
       {/* 結帳頁面 */}
       <div className="my-5 row justify-content-center">
-        <form className="col-md-6">
+        <form className="col-md-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-3">
             <label htmlFor="email" className="form-label">
               Email
@@ -151,8 +324,18 @@ function Checkout() {
               type="email"
               className="form-control"
               placeholder="請輸入 Email"
-              defaultValue="test@gamil.com"
+              defaultValue=""
+              {...register("email", {
+                required: "請輸入 Email",
+                pattern: {
+                  value: /^\S+@\S+$/i,
+                  message: "Email 格式不正確",
+                },
+              })}
             />
+            {errors.email && (
+              <p className="text-danger">{errors.email.message}</p>
+            )}
           </div>
 
           <div className="mb-3">
@@ -165,8 +348,15 @@ function Checkout() {
               type="text"
               className="form-control"
               placeholder="請輸入姓名"
-              defaultValue="阿蘇"
+              defaultValue=""
+              {...register("name", {
+                required: "請輸入姓名",
+                minLength: { value: 2, message: "姓名最少兩個字" },
+              })}
             />
+            {errors.name && (
+              <p className="text-danger">{errors.name.message}</p>
+            )}
           </div>
 
           <div className="mb-3">
@@ -176,11 +366,17 @@ function Checkout() {
             <input
               id="tel"
               name="tel"
-              type="tel"
+              type="tel" //type一定要用tel
               className="form-control"
-              placeholder="請輸入電話"
-              defaultValue="0912345678"
+              placeholder="請輸入電話號碼"
+              defaultValue=""
+              {...register("tel", {
+                required: "請輸入電話",
+                pattern: { value: /^\d+$/, message: "電話僅能輸入數字" },
+                minLength: { value: 8, message: "電話最少8碼" },
+              })}
             />
+            {errors.tel && <p className="text-danger">{errors.tel.message}</p>}
           </div>
 
           <div className="mb-3">
@@ -193,8 +389,14 @@ function Checkout() {
               type="text"
               className="form-control"
               placeholder="請輸入地址"
-              defaultValue="嘉義市東區"
+              defaultValue=""
+              {...register("address", {
+                required: "請輸入地址",
+              })}
             />
+            {errors.address && (
+              <p className="text-danger">{errors.address.message}</p>
+            )}
           </div>
 
           <div className="mb-3">
@@ -206,6 +408,7 @@ function Checkout() {
               className="form-control"
               cols="30"
               rows="10"
+              {...register("message")}
             ></textarea>
           </div>
           <div className="text-end">
@@ -215,6 +418,11 @@ function Checkout() {
           </div>
         </form>
       </div>
+      <SingleProductModal
+        product={product}
+        addCart={addCart}
+        closeModal={closeModal}
+      />
     </div>
   );
 }
